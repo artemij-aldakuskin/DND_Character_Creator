@@ -146,16 +146,24 @@ class DndClass():
         self._difficulty = difficulty
         self._abilities_prior = abilities_prior
 
-df_classes = pd.read_excel("game_data.xlcx", sheet_name = "CLASS" )
+    @property
+    def abilities_prior(self):
+        return self._abilities_prior
+
+df_classes = pd.read_excel("game_data.xlsx", sheet_name = "CLASS" )
 
 ALL_CLASS = []
 for _, row in df_classes.iterrows():
+    prior = []
+    for x in row["abilities_prior"].split(","):
+        prior.append(x.strip())
     ALL_CLASS.append(DndClass(key = row["key"],
                         display_name = row["display_name"],
                         description=row["description"],
                         role = row["role"],
                         difficulty = row["difficulty"],
-                        abilities_prior= [for x in row["abilities_prior"].split(",")]))
+                        abilities_prior = prior
+                        ))
 
 class Race:
     def __init__(self, key, display_name, description, ability_bonus):
@@ -163,6 +171,10 @@ class Race:
         self._display_name = display_name
         self._description = description
         self._ability_bonus = ability_bonus  # dict {"STR":2, "CON":1}
+
+    @property
+    def ability_bonus(self):
+        return self._ability_bonus
     
 def parse_ability_bonus(text):
     result = {}
@@ -170,10 +182,12 @@ def parse_ability_bonus(text):
     for part in parts:
         key,value = part.split(":")
         result[key.strip()] = int(value.strip())
+    return result
+      
 
 ALL_RACES = []
 
-df_races = pd.read_excel("game_data.xlcx", sheet_name = "RACE")
+df_races = pd.read_excel("game_data.xlsx", sheet_name = "RACE")
 for _, row in df_races.iterrows(): #man nereikalingas _ - index 
     ALL_RACES.append(Race(key = row["key"],
                           display_name = row["display_name"],
@@ -196,6 +210,7 @@ def choose_from_list(options, title):
             return options[value-1]
         else:
             print(f"Must be one of the options")
+
 def character_creator():
     name = input("Enter character name:")
     chosen_class = choose_from_list(ALL_CLASS, "classes")
