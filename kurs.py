@@ -69,7 +69,7 @@ class AbilityScores:
         for i in array:
             print("Available:", abilities)
             while True:
-                value = input(f"For what characteristic {i}").upper()
+                value = input(f"For what characteristic {i} Abilities=").upper()
                 if value in abilities:
                     self._scores[value] = i
                     abilities.remove(value)
@@ -93,7 +93,7 @@ class AbilityScores:
         for i in dice_rolls:
             print("Available:", abilities)
             while True:
-                value = input(f"For what characteristic {i}").upper()
+                value = input(f"For what characteristic {i} Abilities=").upper()
                 if value in abilities:
                     self._scores[value] = i
                     abilities.remove(value)
@@ -108,9 +108,10 @@ class AbilityScores:
     def race_bonus(self,chosen_race):
         for i in chosen_race.ability_bonus:
             self._scores[i] += chosen_race.ability_bonus[i]
-           
+     
     def modifier(self):
-        for i in self._mod:
+        abilities = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
+        for i in abilities:
             self._mod[i] = (self._scores[i] - 10) // 2
         
      
@@ -229,5 +230,8 @@ def display():
     print(f"Race: {hero.race._display_name}")
     print(f"Level: {hero.lvl}")
     print(f"Proficiency Bonus: {hero.proficiency_bonus}")
-
+    print("Ability Scores:")
+    hero.ability_scores.modifier()
+    for ability, score in hero.ability_scores._scores.items():
+        print(f"{ability}: {score} (Modifier: {hero.ability_scores._mod[ability]:+d})")
 display()
