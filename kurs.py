@@ -112,6 +112,7 @@ class AbilityScores:
     def modifier(self):
         for i in self._mod:
             self._mod[i] = (self._scores[i] - 10) // 2
+        
      
     def choose_score_generation_method(self,chosen_class):
         while True:
@@ -221,4 +222,12 @@ def character_creator():
     hero = Character(name, chosen_race, chosen_class, scores)
     return hero
 
-      
+hero = character_creator()
+def display():
+    print(f"Name: {hero.name}")
+    print(f"Class: {hero.dnd_class._display_name}")
+    print(f"Race: {hero.race._display_name}")
+    print(f"Level: {hero.lvl}")
+    print(f"Proficiency Bonus: {hero.proficiency_bonus}")
+
+display()
