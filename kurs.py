@@ -41,6 +41,19 @@ class Character:
     @property
     def proficiency_bonus(self):
         return 2 + (self._lvl - 1) // 4
+    
+    def display(self):
+        print("-----General-----")
+        print(f"Name: {self.name}")
+        print(f"Class: {self.dnd_class.display_name}")
+        print(f"Race: {self.race.display_name}")
+        print(f"Level: {self.lvl}")
+        print(f"HP: {self.dnd_class.hit_die + self.ability_scores._mod['CON']}")
+        print(f"AC: {10 + self.ability_scores._mod['DEX']}")
+        print(f"Proficiency Bonus: {self.proficiency_bonus}")
+        print("\n-----Ability Scores-----")
+        for ability, score in self.ability_scores._scores.items():
+            print(f"{ability}: {score} (Modifier: {self.ability_scores._mod[ability]:+d})")
       
 
 class AbilityScores:
@@ -63,20 +76,9 @@ class AbilityScores:
             "CHA": 0
        } 
     
-    def standard_array(self):
-        array = [15, 14, 13, 12, 10, 8]
-        abilities = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
-        for i in array:
-            print("Available:", abilities)
-            while True:
-                value = input(f"For what characteristic {i} Abilities=").upper()
-                if value in abilities:
-                    self._scores[value] = i
-                    abilities.remove(value)
-                    break
-                else:
-                    print("MUST BE FROM AVAILABLE!")
-
+    def assign_score(self, value, i):
+        self._scores[value] = i
+    
     def dice_roll(self):
         dices = []
         for i in range(4):
@@ -85,22 +87,6 @@ class AbilityScores:
         dices.remove(min(dices))
         return sum(dices)
      
-    def dice_roll_method(self):
-        dice_rolls = []
-        for i in range(6):
-            dice_rolls.append(self.dice_roll())
-        abilities = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
-        for i in dice_rolls:
-            print("Available:", abilities)
-            while True:
-                value = input(f"For what characteristic {i} Abilities=").upper()
-                if value in abilities:
-                    self._scores[value] = i
-                    abilities.remove(value)
-                    break
-                else:
-                    print("MUST BE FROM AVAILABLE!")
-
     def auto_by_class(self,chosen_class):
         array = [15, 14, 13, 12, 10, 8]
         for i in range(6):
@@ -113,44 +99,34 @@ class AbilityScores:
         abilities = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
         for i in abilities:
             self._mod[i] = (self._scores[i] - 10) // 2
-        
-     
-    def choose_score_generation_method(self,chosen_class):
-        while True:
-            try:
-                value = int(input("What way do you want to choose?\n"
-                "1 - Standard Array\n"
-                "2 - Dice Roll\n"
-                "3 - Auto\n"))
-            except ValueError:
-                print("Must be a number")
-                continue
-            if value not in [1,2,3]:
-                print("Choose one way from available")
-            elif value == 1:
-                self.standard_array()
-                break
-            elif value == 2:
-                self.dice_roll_method()
-                break
-            elif value == 3:
-                self.auto_by_class(chosen_class)
-                break
 
-            
+
 class DndClass():
    
-    def __init__ (self, key, display_name, description, role, difficulty,abilities_prior):
+    def __init__ (self, key, display_name, description, role, difficulty, abilities_prior, hit_die):
         self._key = key
         self._display_name = display_name
         self._description = description
         self._role = role
         self._difficulty = difficulty
         self._abilities_prior = abilities_prior
+        self._hit_die = hit_die
 
     @property
     def abilities_prior(self):
         return self._abilities_prior
+    
+    @property
+    def display_name(self):
+        return self._display_name
+    
+    @property
+    def hit_die(self):
+        return self._hit_die
+        
+    @property
+    def description(self):
+        return self._description
 
 df_classes = pd.read_excel("game_data.xlsx", sheet_name = "CLASS" )
 
@@ -161,11 +137,13 @@ for _, row in df_classes.iterrows():
         prior.append(x.strip())
     ALL_CLASS.append(DndClass(key = row["key"],
                         display_name = row["display_name"],
-                        description=row["description"],
+                        description = row["description"],
                         role = row["role"],
                         difficulty = row["difficulty"],
-                        abilities_prior = prior
+                        abilities_prior = prior,
+                        hit_die = row["hit_die"]
                         ))
+
 
 class Race:
     def __init__(self, key, display_name, description, ability_bonus):
@@ -177,6 +155,14 @@ class Race:
     @property
     def ability_bonus(self):
         return self._ability_bonus
+    
+    @property
+    def display_name(self):
+        return self._display_name
+    
+    @property
+    def description(self):
+        return self._description
     
 def parse_ability_bonus(text):
     result = {}
@@ -200,11 +186,11 @@ def choose_from_list(options, title):
     i=1
     print (f"All {title}:")
     for variants in options:
-        print(f"{i}. {variants._display_name}")
+        print(f"{i}. {variants.display_name}\n{variants.description}")
         i += 1
     while True:
         try:
-            value = int(input(f"Choose your options: "))
+            value = int(input_value("Choose your options: ", False))
         except ValueError:
             print("Must be a number")
             continue
@@ -214,24 +200,70 @@ def choose_from_list(options, title):
             print(f"Must be one of the options")
 
 def character_creator():
-    name = input("Enter character name:")
+    name = input_value("Enter character name:", False)
     chosen_class = choose_from_list(ALL_CLASS, "classes")
     scores = AbilityScores()
     chosen_race = choose_from_list(ALL_RACES, "races")
-    scores.choose_score_generation_method(chosen_class)
+    choose_score_generation_method(scores,chosen_class)
     scores.race_bonus(chosen_race)
+    scores.modifier()
     hero = Character(name, chosen_race, chosen_class, scores)
     return hero
 
+def input_value(prompt, up):
+    if up:
+        return input(prompt).strip().upper()
+    else: 
+        return input(prompt).strip()
+    
+def choose_score_generation_method(scores,chosen_class):
+    array = [15, 14, 13, 12, 10, 8]
+    abilities = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
+    while True:
+        try:
+            type_method = int(input_value("What way do you want to choose?\n"
+            "1 - Standard Array\n"
+            "2 - Dice Roll\n"
+            "3 - Auto\n", False))
+        except ValueError:
+            print("Must be a number")
+            continue
+        if type_method not in [1,2,3]:
+            print("Choose one way from available")
+        elif type_method == 1:
+            for i in array:
+                print("Available:", abilities)
+                while True:
+                    value = input_value(f"For what characteristic {i} Abilities=", True)
+                    if value in abilities:
+                        scores.assign_score(value, i)
+                        abilities.remove(value)
+                        break
+                    else:
+                        print("MUST BE FROM AVAILABLE!")
+            break
+        elif type_method == 2:
+            dice_rolls = []
+            dice_rolls_show = []
+            for i in range(6):
+                dice_rolls.append(scores.dice_roll())
+            for i in range(6):
+                dice_rolls_show.append(dice_rolls[i])
+            for i in dice_rolls:
+                print("Available characteristics:", abilities)
+                print("Available dice rolls:", dice_rolls_show)
+                while True:
+                    value = input_value(f"For what characteristic {i} Abilities=", True)
+                    if value in abilities:
+                        scores.assign_score(value, i)
+                        abilities.remove(value)
+                        dice_rolls_show.remove(i)
+                        break
+                    else:
+                        print("MUST BE FROM AVAILABLE!")  
+            break
+        elif type_method == 3:
+            scores.auto_by_class(chosen_class)
+            break
 hero = character_creator()
-def display():
-    print(f"Name: {hero.name}")
-    print(f"Class: {hero.dnd_class._display_name}")
-    print(f"Race: {hero.race._display_name}")
-    print(f"Level: {hero.lvl}")
-    print(f"Proficiency Bonus: {hero.proficiency_bonus}")
-    print("Ability Scores:")
-    hero.ability_scores.modifier()
-    for ability, score in hero.ability_scores._scores.items():
-        print(f"{ability}: {score} (Modifier: {hero.ability_scores._mod[ability]:+d})")
-display()
+hero.display()
