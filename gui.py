@@ -14,10 +14,14 @@ def open_character_window(hero):
     ttk.Label(character_frame, text=f"Name: {hero.name}").grid(row=0, column=0)
     ttk.Label(character_frame, text=f"Race: {hero.race.display_name}").grid(row=1, column=0)
     ttk.Label(character_frame, text=f"Class: {hero.dnd_class.display_name}").grid(row=2, column=0)
-    ttk.Label(character_frame, text="--- Stats ---").grid(row=3, column=0)
-    row = 4
+    ttk.Label(character_frame, text=f"Level: {hero.lvl}").grid(row=3, column=0)
+    ttk.Label(character_frame, text=f"HP: {hero.hit_dies}").grid(row=4, column=0)
+    ttk.Label(character_frame, text=f"AC: {hero.ac}").grid(row=5, column=0)
+    ttk.Label(character_frame, text=f"Proficiency Bonus: {hero.proficiency_bonus}").grid(row=6, column=0)
+    ttk.Label(character_frame, text="-----Ability Scores-----").grid(row=7, column=0)
+    row = 8
     for ability, score in hero.ability_scores.scores.items():
-        ttk.Label(character_frame, text=f"{ability}: {score} ({hero.ability_scores.mod[ability]:+})").grid(row=row, column=0)
+        ttk.Label(character_frame, text=f"{ability}: {score} (Modifier: {hero.ability_scores.mod[ability]:+d})").grid(row=row, column=0)
         row += 1
     window.protocol("WM_DELETE_WINDOW", root.destroy)
 
