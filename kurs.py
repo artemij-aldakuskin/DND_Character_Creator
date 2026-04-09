@@ -44,11 +44,11 @@ class Character:
     
     @property
     def hit_dies(self):
-        return self.dnd_class.hit_die + self.ability_scores._mod['CON']
+        return self.dnd_class.hit_die + self.ability_scores.mod['CON']
         
     @property
     def ac(self):
-        return 10 + self.ability_scores._mod['DEX']
+        return 10 + self.ability_scores.mod['DEX']
     def display(self):
         print("-----General-----")
         print(f"Name: {self.name}")
@@ -59,7 +59,7 @@ class Character:
         print(f"AC: {self.ac}")
         print(f"Proficiency Bonus: {self.proficiency_bonus}")
         print("\n-----Ability Scores-----")
-        for ability, score in self.ability_scores._scores.items():
+        for ability, score in self.ability_scores.scores.items():
             print(f"{ability}: {score} (Modifier: {self.ability_scores.mod[ability]:+d})")
       
 
@@ -142,6 +142,14 @@ class DndClass():
     @property
     def description(self):
         return self._description
+    
+    @property
+    def role(self):
+        return self._role
+    
+    @property
+    def difficulty(self):
+        return self._difficulty
 
 try:
     df_classes = pd.read_excel("game_data.xlsx", sheet_name = "CLASS" )

@@ -25,20 +25,25 @@ def load_hero_window():
     if df_hero.empty:
         error_window("No saved hero found")
     else:
-        load_hero()
+        load_hero(df_hero)
 
-def load_hero():
-    df_hero = pd.read_excel("game_data.xlsx", sheet_name = "HERO" )
+def load_hero(df_hero):
     abilities = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
     row = df_hero.iloc[-1]
     scores = kurs.AbilityScores()
     for ability in abilities:
         scores.assign_score(ability, int(row[ability]))
     dnd_class_from_ex = finding(kurs.ALL_CLASS, row["display_name_class"])
-    race = finding(kurs.ALL_RACES, row["display_name_race"])
+    if dnd_class_from_ex is None:
+        error_window("Saved class was not found")
+        return
+    race_from_ex = finding(kurs.ALL_RACES, row["display_name_race"])
+    if race_from_ex is None:
+        error_window("Saved race was not found")
+        return
     scores.modifier()
     hero = kurs.Character(name = row["name"],
-                    race = race,
+                    race = race_from_ex,
                     dnd_class = dnd_class_from_ex,
                     lvl = int(row["lvl"]),
                     ability_scores= scores)
@@ -85,10 +90,10 @@ def open_class_window():
     class_frame.place(relx=0.5,anchor="n")
     ttk.Label(class_frame,text = f"{chosen_class.display_name}").grid(row = 0, column = 0)
     ttk.Label(class_frame, text = f"HP: {chosen_class.hit_die}").grid(row = 1, column = 0, pady=2)
-    ttk.Label(class_frame, text = f"Role: {chosen_class._role}").grid(row = 2, column = 0, pady=2)
+    ttk.Label(class_frame, text = f"Role: {chosen_class.role}").grid(row = 2, column = 0, pady=2)
     ttk.Label(class_frame, text = "Description:").grid(row = 3, column = 0,pady = 2)
     ttk.Label(class_frame, text = f"{chosen_class.description}").grid(row = 4, column = 0,pady = 2)
-    ttk.Label(class_frame, text = f"Difficulty: {chosen_class._difficulty}").grid(row = 5, column = 0, pady = 2)
+    ttk.Label(class_frame, text = f"Difficulty: {chosen_class.difficulty}").grid(row = 5, column = 0, pady = 2)
     ttk.Label(class_frame, text = "Abilities Priority:").grid(row = 6, column = 0, pady = 2)
     i = 7
     for ability in chosen_class.abilities_prior:
@@ -131,7 +136,6 @@ def open_characteristic_window(hero_name, chosen_race, chosen_class, scores, arr
         for box in value_boxes:
             selected = [b.get() for b in value_boxes if b != box and b.get() != ""]
             selected_counts = Counter(selected)
-            current = box.get()
             available = []
             for v in sorted(array):
                 v_str = str(v)
@@ -162,7 +166,6 @@ def applying(hero_name, chosen_race, chosen_class,scores, value_boxes,window):
     hero = kurs.Character(hero_name, chosen_race, chosen_class, 1, scores)
     kurs.save_hero(hero)
     window.destroy()
-    root.withdraw()
     open_character_window(hero)
 
 
@@ -171,8 +174,14 @@ def character_creator_gui():
     hero_name = entry.get()
     hero_class = classs.get()
     chosen_class = finding(kurs.ALL_CLASS,hero_class)
+    if chosen_class == None:
+        error_window("Class not found")
+        return
     hero_race = race.get()
     chosen_race = finding(kurs.ALL_RACES,hero_race)
+    if chosen_race == None:
+        error_window("Race not found")
+        return
     type_of_method = type_method.get()
     if hero_name == "" or hero_class == "" or hero_race == "" or type_of_method == "":
         error_window("One of the fields is empty")
@@ -188,7 +197,6 @@ def character_creator_gui():
         scores.modifier()
         hero = kurs.Character(hero_name, chosen_race, chosen_class, 1, scores)
         kurs.save_hero(hero)
-        root.withdraw()
         open_character_window(hero)
 
     
@@ -199,6 +207,7 @@ def finding(options,what):
         i += 1
         if variants.display_name == what:
             return options[i-1]
+    return None
         
 frame = ttk.Frame(root)
 frame.place(relx=0.5, anchor="n")
