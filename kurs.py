@@ -2,12 +2,17 @@ import random
 import pandas as pd
 class Character:
 
-    def __init__(self, name, race, dnd_class, lvl, ability_scores):
+    def __init__(self, name, race, dnd_class, lvl, ability_scores, current_hp):
         self.name = name
         self.race = race
         self.dnd_class = dnd_class
         self.ability_scores = ability_scores
         self.lvl = lvl
+        self._hp_max = dnd_class.hit_die + ability_scores.mod['CON']
+        if current_hp is None:
+            self.current_hp = self.hp_max
+        else:
+            self.current_hp = current_hp
 
     @property
     def name(self):
@@ -35,6 +40,8 @@ class Character:
     def lvl_up(self):
         if self._lvl < 20:
             self._lvl = self._lvl + 1
+            gain = self.roll_hp_gain()
+            self._hp_max = self._hp_max + gain + self.ability_scores.mod["CON"]
         else: 
             raise ValueError("LVL is already 20")
       
@@ -43,25 +50,65 @@ class Character:
         return 2 + (self._lvl - 1) // 4
     
     @property
-    def hit_dies(self):
-        return self.dnd_class.hit_die + self.ability_scores.mod['CON']
+    def hp_max(self):
+        return self._hp_max
         
     @property
     def ac(self):
         return 10 + self.ability_scores.mod['DEX']
-    def display(self):
-        print("-----General-----")
-        print(f"Name: {self.name}")
-        print(f"Class: {self.dnd_class.display_name}")
-        print(f"Race: {self.race.display_name}")
-        print(f"Level: {self.lvl}")
-        print(f"HP: {self.hit_dies}")
-        print(f"AC: {self.ac}")
-        print(f"Proficiency Bonus: {self.proficiency_bonus}")
-        print("\n-----Ability Scores-----")
-        for ability, score in self.ability_scores.scores.items():
-            print(f"{ability}: {score} (Modifier: {self.ability_scores.mod[ability]:+d})")
+    
+    @property
+    def current_hp(self):
+        return self._current_hp
+    
+    @current_hp.setter
+    def current_hp(self, value):
+        if not isinstance(value, int):
+            raise TypeError("HP must be a number")
+        elif value > self._hp_max:
+            raise ValueError("Curent HP can not be more than HP max")
+        elif value < 0:
+            raise ValueError("Curent HP can not be negative")
+        self._current_hp = value
+    
+    def roll_hp_gain(self):
+        return random.randint(1, self.dnd_class.hit_die)
+    
+    def take_damage(self, amount):
+        self.current_hp -= amount
+
+    def heal(self, amount):
+        self.current_hp += amount
+
       
+class ScoreGenerationMethod:
+    def generate(self, scores, chosen_class):
+        raise NotImplementedError("This method must be overridden")
+
+class StandardArrayMethod(ScoreGenerationMethod):
+    def generate(self, scores, chosen_class):
+        array = [15, 14, 13, 12, 10, 8]
+        return array
+    
+class DiceRollMethod(ScoreGenerationMethod):
+    def generate(self, scores, chosen_class):
+        array = [scores.dice_roll() for i in range(0,6)]
+        return array
+    
+class AutoByClassMethod(ScoreGenerationMethod):
+    def generate(self, scores, chosen_class):
+        scores.auto_by_class(chosen_class)
+        return None
+    
+def create_score_method(type_of_method):
+    if type_of_method == "Standard Array":
+        return StandardArrayMethod()
+    elif type_of_method == "Dice Roll":
+        return DiceRollMethod()
+    elif type_of_method == "Auto By Class":
+        return AutoByClassMethod()
+    else:
+        return None
 
 class AbilityScores:
 
@@ -105,15 +152,15 @@ class AbilityScores:
     def auto_by_class(self,chosen_class):
         array = [15, 14, 13, 12, 10, 8]
         for i in range(6):
-            self._scores[chosen_class.abilities_prior[i]] = array[i]
+            self.scores[chosen_class.abilities_prior[i]] = array[i]
     def race_bonus(self,chosen_race):
         for i in chosen_race.ability_bonus:
-            self._scores[i] += chosen_race.ability_bonus[i]
+            self.scores[i] += chosen_race.ability_bonus[i]
      
     def modifier(self):
         abilities = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
         for i in abilities:
-            self._mod[i] = (self._scores[i] - 10) // 2
+            self.mod[i] = (self.scores[i] - 10) // 2
 
 
 class DndClass():
@@ -213,74 +260,14 @@ for _, row in df_races.iterrows(): #man nereikalingas _ - index
                           description = row["description"],
                           ability_bonus = parse_ability_bonus(row["ability_bonus"])))
 
-def choose_from_list(options, title):
-    i=1
-    print (f"All {title}:")
-    for variants in options:
-        print(f"{i}. {variants.display_name}\n{variants.description}")
-        i += 1
-    while True:
-        try:
-            value = int(input_value("Choose your options: ", False))
-        except ValueError:
-            print("Must be a number")
-            continue
-        if 1 <= value <= len(options):
-            return options[value-1]
-        else:
-            print(f"Must be one of the options")
-
-def input_value(prompt, up):
-    if up:
-        return input(prompt).strip().upper()
-    else: 
-        return input(prompt).strip()
-    
-def choose_score_generation_method(scores,chosen_class,type_method):
-    array = [15, 14, 13, 12, 10, 8]
-    abilities = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
-    if type_method not in ["Standard Array", "Dice Roll", "Auto By Class"]:
-        print("Choose one way from available")
-    elif type_method == "Standard Array":
-        for i in array:
-            print("Available:", abilities)
-            while True:
-                value = input_value(f"For what characteristic {i} Abilities=", True)
-                if value in abilities:
-                    scores.assign_score(value, i)
-                    abilities.remove(value)
-                    break
-                else:
-                    print("MUST BE FROM AVAILABLE!")
-    elif type_method == "Dice Roll":
-        dice_rolls = []
-        dice_rolls_show = []
-        for i in range(6):
-            dice_rolls.append(scores.dice_roll())
-        for i in range(6):
-            dice_rolls_show.append(dice_rolls[i])
-        for i in dice_rolls:
-            print("Available characteristics:", abilities)
-            print("Available dice rolls:", dice_rolls_show)
-            while True:
-                value = input_value(f"For what characteristic {i} Abilities=", True)
-                if value in abilities:
-                    scores.assign_score(value, i)
-                    abilities.remove(value)
-                    dice_rolls_show.remove(i)
-                    break
-                else:
-                    print("MUST BE FROM AVAILABLE!")  
-    elif type_method == "Auto By Class":
-        scores.auto_by_class(chosen_class)
-
 def save_hero(hero):
     data = [{
         "name" : hero.name,
         "display_name_race" : hero.race.display_name,
         "display_name_class" : hero.dnd_class.display_name,
         "lvl" : hero.lvl,
-        "hit_die" : hero.hit_dies,
+        "hp_max" : hero.hp_max,
+        "current_hp" : hero.current_hp,
         "ac" : hero.ac,
         "proficiency_bonus" : hero.proficiency_bonus,
         "STR" : hero.ability_scores.scores["STR"],
@@ -292,5 +279,6 @@ def save_hero(hero):
     }]
     df_hero = pd.DataFrame(data)
     with pd.ExcelWriter("game_data.xlsx", engine= "openpyxl", mode = "a", if_sheet_exists="replace") as writer: df_hero.to_excel(writer, sheet_name = "HERO", index = False)
+
 if __name__ == "__main__":
     pass
